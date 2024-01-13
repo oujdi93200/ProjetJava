@@ -1,0 +1,42 @@
+stages:
+  - prepare
+  - build
+  - dockerize
+
+variables:
+  POSTGRES_REPO: "http://gitlab.esgi.lab/dev/postgres.git"
+  JAVA_APP_REPO: "http://gitlab.esgi.lab/dev/version.git"
+  MAVEN_IMAGE: "maven:latest"
+  JAVA_IMAGE: "openjdk:11-jre"
+
+before_script:
+  - apt-get update && apt-get install -y git
+
+prepare-db:
+  stage: prepare
+  script:
+    - git clone $POSTGRES_REPO
+    - cd postgres
+    - chmod +x generator.sh
+    - ./generator.sh
+  only:
+    - master
+
+build-test-app:
+  image: $MAVEN_IMAGE
+  stage: build
+  script:
+    - git clone $JAVA_APP_REPO
+    - cd version
+    - mvn clean compile test
+  only:
+    - master
+
+dockerize-app:
+  stage: dockerize
+  script:
+    - docker build -t my-java-app .
+    - docker run -d --name my-java-app-container my-java-app
+  only:
+    - master
+
